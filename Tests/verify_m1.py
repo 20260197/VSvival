@@ -1,4 +1,4 @@
-"""Compile against installed Unity assemblies; run pure C# combat-state checks.
+"""Compile against installed Unity assemblies; run pure M1 combat and M2 upgrade checks.
 
 This never launches Unity and does not test rendering, physics, scenes or APKs.
 """
@@ -27,12 +27,13 @@ def main():
     engine = sorted((managed / "UnityEngine").glob("UnityEngine.*.dll"))
     editor_modules = sorted((managed / "UnityEngine").glob("UnityEditor.*Module.dll"))
     ui = package / "UnityEngine.UI.dll"
+    input_system = package / "Unity.InputSystem.dll"
     urp = [package / name for name in (
         "Unity.RenderPipelines.Universal.Runtime.dll", "Unity.RenderPipelines.Universal.2D.Runtime.dll",
         "Unity.RenderPipelines.Core.Runtime.dll", "Unity.RenderPipelines.Core.Runtime.Shared.dll")]
     if not engine or not editor_modules:
         raise FileNotFoundError("Unity engine/editor module assemblies missing")
-    for path in [dotnet, compiler, *framework, *engine, ui, *urp, *editor_modules]:
+    for path in [dotnet, compiler, *framework, *engine, ui, input_system, *urp, *editor_modules]:
         if not path.is_file():
             raise FileNotFoundError(f"Required installed Unity assembly/tool missing: {path}")
 
@@ -50,24 +51,28 @@ def main():
             subprocess.run([str(dotnet), str(compiler), "@" + str(response)], check=True)
             return destination
 
-        runtime = compile_sources("CookieBreaker.M1.Runtime", framework + engine + [ui],
-                                  sorted((project / "Assets/Scripts/Combat").glob("*.cs")))
+        runtime = compile_sources("CookieBreaker.Runtime", framework + engine + [ui],
+                                  sorted((project / "Assets/Scripts").rglob("*.cs")))
         print("PASS: runtime C# compilation (no UnityEditor references).", flush=True)
-        compile_sources("CookieBreaker.M1.Editor", framework + engine + editor_modules + [ui, *urp, runtime],
+        compile_sources("CookieBreaker.Editor", framework + engine + editor_modules + [ui, input_system, *urp, runtime],
                         sorted((project / "Assets/Editor").glob("*.cs")))
         print("PASS: Editor C# compilation against installed Unity/package assemblies.", flush=True)
 
         net_refs = sorted((sdk / "packs/Microsoft.NETCore.App.Ref").glob("8.*/ref/net8.0/*.dll"))
         if not net_refs:
             raise FileNotFoundError(".NET 8 reference pack missing")
-        checks = compile_sources("CombatStateChecks", net_refs,
-                                 [project / "Assets/Scripts/Combat/CombatState.cs", project / "Tests/CombatStateChecks.cs"], True)
         versions = [line.split()[1] for line in subprocess.check_output([str(dotnet), "--list-runtimes"], text=True).splitlines()
                     if line.startswith("Microsoft.NETCore.App 8.")]
         version = max(versions, key=lambda value: tuple(map(int, value.split("."))))
-        checks.with_suffix(".runtimeconfig.json").write_text(json.dumps({"runtimeOptions": {
-            "tfm": "net8.0", "framework": {"name": "Microsoft.NETCore.App", "version": version}}}), encoding="utf-8")
-        subprocess.run([str(dotnet), str(checks)], check=True)
+        for name, sources in (
+            ("CombatStateChecks", ["Assets/Scripts/Combat/CombatState.cs", "Tests/CombatStateChecks.cs"]),
+            ("UpgradeStateChecks", ["Assets/Scripts/Combat/CombatState.cs", "Assets/Scripts/Upgrades/UpgradeState.cs",
+                                    "Tests/UpgradeStateChecks.cs"]),
+        ):
+            checks = compile_sources(name, net_refs, [project / path for path in sources], True)
+            checks.with_suffix(".runtimeconfig.json").write_text(json.dumps({"runtimeOptions": {
+                "tfm": "net8.0", "framework": {"name": "Microsoft.NETCore.App", "version": version}}}), encoding="utf-8")
+            subprocess.run([str(dotnet), str(checks)], check=True)
         print("Unity import, physics, scene execution, rendering and APK build remain UNVERIFIED.", flush=True)
 
 
