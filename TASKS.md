@@ -6,12 +6,14 @@
 
 - [x] 기존 Unity 프로젝트/저장소 유무 및 Unity 버전 확인
 - [ ] 없으면 Unity 2D 프로젝트 생성 및 Git 초기화 (`.gitignore` 포함)
-- [ ] 모바일 세로 화면 기준 씬 및 기본 UI 캔버스 구성
+- [x] 모바일 세로 화면 기준 씬 및 기본 UI 캔버스 구성 (기존 제목 화면 APK의 Galaxy S22 Ultra 실행을 사용자 확인)
 - [ ] Editor Play 모드에서 에러 없이 기본 씬 실행 확인
 
 **완료 기준:** 프로젝트를 열고 Play를 누르면 씬이 정상 실행된다.
 
 ## Milestone 1 — Prototype v0.1 (최우선)
+
+자동 전투·코인 표시 소스와 `Cookie Breaker/M1/Add Combat to Open Main Scene` Editor 도구를 구현했다. 독립 컴파일과 체력/재화 상태 검사는 통과했으며, 아래 실행 항목은 로컬 Play/Android 검증 후 체크한다. 공격력 강화 UI는 이번 요청 범위에 포함하지 않았다. 설치·검증 절차: `Docs/M1_COMBAT.md`.
 
 - [ ] 쿠키가 설정된 영역에 일정 간격으로 생성된다
 - [ ] 활성 쿠키 최대 개수 제한과 생성 값 조절 가능
