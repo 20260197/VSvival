@@ -4,7 +4,7 @@
 
 ## Milestone 0 — 프로젝트 준비
 
-- [ ] 기존 Unity 프로젝트/저장소 유무 및 Unity 버전 확인
+- [x] 기존 Unity 프로젝트/저장소 유무 및 Unity 버전 확인
 - [ ] 없으면 Unity 2D 프로젝트 생성 및 Git 초기화 (`.gitignore` 포함)
 - [ ] 모바일 세로 화면 기준 씬 및 기본 UI 캔버스 구성
 - [ ] Editor Play 모드에서 에러 없이 기본 씬 실행 확인
