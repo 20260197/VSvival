@@ -135,8 +135,16 @@ namespace CookieBreaker.Editor
 
         private static InputActionReference RequireAction(InputActionReference[] actions, string name)
         {
-            InputActionReference reference = actions.SingleOrDefault(action => action.action.name == name);
-            if (reference == null || !EditorUtility.IsPersistent(reference))
+            // Input System imports a second, hidden reference for each action to preserve
+            // legacy file IDs. Match its own loader by excluding those compatibility copies.
+            InputActionReference[] matches = actions.Where(reference => reference != null &&
+                (reference.hideFlags & HideFlags.HideInHierarchy) == 0 &&
+                reference.action != null && reference.action.actionMap.name == "UI" &&
+                reference.action.name == name).ToArray();
+            if (matches.Length != 1)
+                throw new InvalidOperationException($"Expected one visible UI/{name} action reference, found {matches.Length}. Inspect the imported input asset; existing objects were not changed.");
+            InputActionReference reference = matches[0];
+            if (!EditorUtility.IsPersistent(reference))
                 throw new InvalidOperationException($"The existing input asset needs an imported UI/{name} action reference. No new input asset was created.");
             return reference;
         }
