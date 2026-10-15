@@ -35,6 +35,18 @@ namespace CookieBreaker.Combat
             cookieContainer = container;
         }
 
+        public void ClearActiveCookies()
+        {
+            foreach (CookieHealth cookie in cookies)
+            {
+                if (cookie == null) continue;
+                cookie.gameObject.SetActive(false);
+                Destroy(cookie.gameObject);
+            }
+            cookies.Clear();
+            remaining = 0;
+        }
+
         private void Start()
         {
             if (worldCamera != null && wallet != null && cookieTemplate != null &&
