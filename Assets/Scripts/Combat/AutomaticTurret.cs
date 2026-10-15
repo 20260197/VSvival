@@ -19,6 +19,16 @@ namespace CookieBreaker.Combat
         private readonly List<CookieProjectile> projectiles = new List<CookieProjectile>();
         private float remaining;
         public int Damage { get => damage; set => damage = Mathf.Max(1, value); }
+        public float FireInterval
+        {
+            get => Mathf.Max(0.1f, fireInterval);
+            set
+            {
+                float previous = FireInterval;
+                fireInterval = Mathf.Max(0.1f, value);
+                remaining *= fireInterval / previous;
+            }
+        }
 
         public void Configure(Camera camera, CookieSpawner cookieSpawner, Transform pivot, Transform firePoint,
             CookieProjectile template, Transform container)
@@ -55,7 +65,7 @@ namespace CookieBreaker.Combat
             projectile.Initialize(shotDirection.normalized, Mathf.Max(1, damage));
             projectile.gameObject.SetActive(true);
             projectiles.Add(projectile);
-            remaining = Mathf.Max(0.1f, fireInterval);
+            remaining = FireInterval;
         }
     }
 }

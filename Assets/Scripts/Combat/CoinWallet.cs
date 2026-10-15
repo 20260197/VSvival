@@ -9,21 +9,23 @@ namespace CookieBreaker.Combat
         private CoinBalance balance;
         public event Action<int> Changed;
         public int Coins => Balance.Value;
-        private CoinBalance Balance => balance ?? (balance = new CoinBalance(Mathf.Max(0, startingCoins)));
+        internal CoinBalance Balance => balance ?? (balance = new CoinBalance(Mathf.Max(0, startingCoins)));
+
+        // Upgrade purchases notify after their gameplay effects have been applied.
+        internal void NotifyBalanceChanged() => Changed?.Invoke(Coins);
 
         private void Awake() { _ = Balance; }
 
         public void Credit(int amount)
         {
             Balance.Credit(amount);
-            Changed?.Invoke(Coins);
+            NotifyBalanceChanged();
         }
 
-        // A small extension point for the next upgrade milestone.
         public bool TrySpend(int amount)
         {
             if (!Balance.TrySpend(amount)) return false;
-            Changed?.Invoke(Coins);
+            NotifyBalanceChanged();
             return true;
         }
     }

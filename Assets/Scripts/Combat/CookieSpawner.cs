@@ -16,6 +16,16 @@ namespace CookieBreaker.Combat
         private readonly List<CookieHealth> cookies = new List<CookieHealth>();
         private float remaining;
         public IReadOnlyList<CookieHealth> ActiveCookies => cookies;
+        public float SpawnInterval
+        {
+            get => Mathf.Max(0.1f, spawnInterval);
+            set
+            {
+                float previous = SpawnInterval;
+                spawnInterval = Mathf.Max(0.1f, value);
+                remaining *= spawnInterval / previous;
+            }
+        }
 
         public void Configure(Camera camera, CoinWallet coinWallet, CookieHealth template, Transform container)
         {
@@ -38,7 +48,7 @@ namespace CookieBreaker.Combat
             cookies.RemoveAll(cookie => cookie == null || !cookie.IsAlive);
             remaining -= Time.deltaTime;
             if (remaining > 0) return;
-            remaining = Mathf.Max(0.1f, spawnInterval);
+            remaining = SpawnInterval;
             if (cookies.Count >= Mathf.Clamp(maximumCookies, 1, 100)) return;
 
             // A bounded retry keeps random placement from piling cookies on each other.
