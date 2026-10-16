@@ -5,6 +5,7 @@ using System.Text.Json;
 using CookieBreaker.Combat;
 using CookieBreaker.Persistence;
 using CookieBreaker.Upgrades;
+using CookieBreaker.Placement;
 
 internal static class SaveStateChecks
 {
@@ -51,6 +52,11 @@ internal static class SaveStateChecks
             progress.coins = 456;
             Check(store.Save(progress) && store.Load(out loaded) == SaveLoadStatus.Loaded && loaded.coins == 456,
                 "Atomic replacement failed");
+            progress = new SaveData { version = SaveData.CurrentVersion, coins = 456, damageLevel = 3, attackSpeedLevel = 2, productionLevel = 1, layoutInitialized = true,
+                turrets = new[] { new PlacedTurretData { instanceId = "owned-turret", typeId = TurretCatalog.Catapult, gridX = 1, gridY = 0, paidCost = 25 } } };
+            Check(store.Save(progress) && store.Load(out loaded) == SaveLoadStatus.Loaded && loaded.version == 2 &&
+                loaded.turrets.Length == 1 && loaded.turrets[0].instanceId == "owned-turret" && loaded.coins == 456 && loaded.damageLevel == 3,
+                "V1-to-V2 file save lost layout or existing economy");
 
             Directory.CreateDirectory(file + ".bak.tmp");
             SaveData unsaved = Progress(); unsaved.coins = 999;

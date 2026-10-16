@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,6 +10,8 @@ namespace CookieBreaker.Persistence
         [SerializeField] private GameObject settingsWindow, confirmationWindow;
         [SerializeField] private Button open, close, reset, cancel, confirm;
         [SerializeField] private Text status;
+        public bool IsOpen => settingsWindow != null && settingsWindow.activeSelf;
+        public event Action<bool> VisibilityChanged;
 
         public void Configure(AutoSaveService service, GameObject settings, GameObject confirmation,
             Button openButton, Button closeButton, Button resetButton, Button cancelButton, Button confirmButton, Text statusLabel)
@@ -39,8 +42,8 @@ namespace CookieBreaker.Persistence
             if (confirm != null) confirm.onClick.RemoveListener(Confirm);
             if (saves != null) saves.StatusChanged -= Refresh;
         }
-        private void Open() { settingsWindow.SetActive(true); confirmationWindow.SetActive(false); Refresh(); }
-        private void Close() { confirmationWindow.SetActive(false); settingsWindow.SetActive(false); }
+        private void Open() { settingsWindow.SetActive(true); confirmationWindow.SetActive(false); VisibilityChanged?.Invoke(true); Refresh(); }
+        private void Close() { confirmationWindow.SetActive(false); settingsWindow.SetActive(false); VisibilityChanged?.Invoke(false); }
         private void RequestReset() { confirmationWindow.SetActive(true); }
         private void Cancel() { confirmationWindow.SetActive(false); }
         private void Confirm()

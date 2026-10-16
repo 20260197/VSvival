@@ -1,6 +1,7 @@
 using System;
 using CookieBreaker.Combat;
 using CookieBreaker.Upgrades;
+using CookieBreaker.Placement;
 using UnityEngine;
 
 namespace CookieBreaker.Persistence
@@ -10,6 +11,10 @@ namespace CookieBreaker.Persistence
     {
         [SerializeField] private CoinWallet wallet;
         [SerializeField] private UpgradeController upgrades;
+        [SerializeField] private TurretPlacementController placement;
+        private PlacedTurretData[] preservedTurrets;
+        private bool preservedLayoutInitialized;
+        public void ConfigurePlacement(TurretPlacementController controller) { placement = controller; }
         private SaveFileStore store;
         private bool initialized, writesAllowed, transitioning;
         private float elapsed;
@@ -39,13 +44,16 @@ namespace CookieBreaker.Persistence
                     Debug.LogError("Save does not match current gameplay rules; preserved without overwriting. " + error, this);
                 }
             }
+            if (placement != null && !placement.IsRestored) placement.RestoreRecords(null);
             initialized = true;
             SetStatus(writesAllowed ? "Ready (" + result + ")" : "Save could not be loaded. Files preserved; reset required to save.");
             Debug.Log("Cookie Breaker save directory: " + Application.persistentDataPath, this);
         }
 
-        private void OnEnable() { if (upgrades != null) upgrades.Purchased += SaveNow; }
-        private void OnDisable() { if (upgrades != null) upgrades.Purchased -= SaveNow; }
+        private void OnEnable()
+        { if (upgrades != null) upgrades.Purchased += SaveNow; if (placement != null) placement.TransactionCommitted += SaveNow; }
+        private void OnDisable()
+        { if (upgrades != null) upgrades.Purchased -= SaveNow; if (placement != null) placement.TransactionCommitted -= SaveNow; }
         private void Update()
         {
             elapsed += Time.unscaledDeltaTime;
@@ -87,9 +95,17 @@ namespace CookieBreaker.Persistence
             coins = wallet.Coins,
             damageLevel = upgrades.State.Offer(UpgradeKind.Damage).Level,
             attackSpeedLevel = upgrades.State.Offer(UpgradeKind.AttackSpeed).Level,
-            productionLevel = upgrades.State.Offer(UpgradeKind.Production).Level
+            productionLevel = upgrades.State.Offer(UpgradeKind.Production).Level,
+            turrets = placement != null ? placement.CaptureRecords() : preservedTurrets,
+            layoutInitialized = placement != null ? placement.IsRestored : preservedLayoutInitialized
         };
-        private void Restore(SaveData data) => upgrades.RestoreProgress(data.coins, data.damageLevel, data.attackSpeedLevel, data.productionLevel);
+        private void Restore(SaveData data)
+        {
+            upgrades.RestoreProgress(data.coins, data.damageLevel, data.attackSpeedLevel, data.productionLevel);
+            preservedLayoutInitialized = data.version >= 2 && data.layoutInitialized;
+            preservedTurrets = preservedLayoutInitialized ? data.turrets ?? Array.Empty<PlacedTurretData>() : null;
+            if (placement != null) placement.RestoreRecords(preservedTurrets);
+        }
         private void SetStatus(string value) { Status = value; StatusChanged?.Invoke(); }
     }
 }

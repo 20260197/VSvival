@@ -1,5 +1,7 @@
 # M3 — 자동 저장 및 게임 재설정
 
+> M3 당시 버전 1 기록이다. M4는 이 버전을 읽고 버전 2에 포대 배치를 추가한다. 최신 설치 및 저장 차이: `Docs/M4_GRID_PLACEMENT.md`. PC Play 기본 검증 정책은 유지한다.
+
 ## 기준과 범위
 
 - 기준: `origin/develop`의 `f8e74de` (M2 PR 병합), 작업 브랜치 `codex/m3-auto-save`.

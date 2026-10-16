@@ -18,6 +18,8 @@ namespace CookieBreaker.Combat
         [SerializeField, Range(1, 64)] private int maximumProjectiles = 24;
         private readonly List<CookieProjectile> projectiles = new List<CookieProjectile>();
         private float remaining;
+        private bool placedOnGrid;
+        public void PlaceAt(Vector3 position) { placedOnGrid = true; transform.position = position; }
         public int Damage { get => damage; set => damage = Mathf.Max(1, value); }
         public float FireInterval
         {
@@ -63,7 +65,7 @@ namespace CookieBreaker.Combat
 
         private void Update()
         {
-            transform.position = CookieSpawner.ViewportPosition(worldCamera, viewportPosition);
+            if (!placedOnGrid) transform.position = CookieSpawner.ViewportPosition(worldCamera, viewportPosition);
             projectiles.RemoveAll(projectile => projectile == null || !projectile.isActiveAndEnabled);
             remaining = Mathf.Max(0, remaining - Time.deltaTime);
             CookieHealth target = spawner.FindNearest(transform.position, Mathf.Max(0.1f, attackRange));

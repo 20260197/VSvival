@@ -1,4 +1,4 @@
-"""Compile against installed Unity assemblies; run M1/M2 rules and M3 file/state checks.
+"""Compile Unity references; run M1-M4 combat, upgrades, file/state and placement checks.
 
 This never launches Unity and does not test rendering, physics, scenes or APKs.
 """
@@ -70,7 +70,9 @@ def main():
                                     "Tests/UpgradeStateChecks.cs"]),
             ("SaveStateChecks", ["Assets/Scripts/Combat/CombatState.cs", "Assets/Scripts/Upgrades/UpgradeState.cs",
                                  "Assets/Scripts/Persistence/SaveData.cs", "Assets/Scripts/Persistence/SaveFileStore.cs",
-                                 "Tests/SaveStateChecks.cs"]),
+                                 "Assets/Scripts/Placement/GridPlacementState.cs", "Tests/SaveStateChecks.cs"]),
+            ("GridPlacementChecks", ["Assets/Scripts/Combat/CombatState.cs", "Assets/Scripts/Placement/GridPlacementState.cs",
+                                     "Assets/Scripts/Persistence/SaveData.cs", "Tests/GridPlacementChecks.cs"]),
         ):
             checks = compile_sources(name, net_refs, [project / path for path in sources], True)
             checks.with_suffix(".runtimeconfig.json").write_text(json.dumps({"runtimeOptions": {
