@@ -59,7 +59,9 @@ namespace CookieBreaker.Upgrades
             if (purchasing || !EnsureReady()) throw new InvalidOperationException("Cannot restore upgrades during a purchase or without M1 references.");
             if (coins < 0) throw new ArgumentOutOfRangeException(nameof(coins));
             // Validate every level before changing any state, including the shared wallet.
-            state.RestoreLevels(damageLevel, speedLevel, productionLevel);
+            // A faster starting production rate must not invalidate already purchased levels.
+            // Costs remain bounded; the current rate is still clamped to its normal cap.
+            state.RestoreLevels(damageLevel, speedLevel, productionLevel, allowCappedProductionLevels: true);
             wallet.Balance.Restore(coins);
             ApplyEffectsAndNotify();
         }

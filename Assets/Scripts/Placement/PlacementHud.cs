@@ -55,6 +55,7 @@ namespace CookieBreaker.Placement
             ui.support.interactable = false;
             placement.Changed += Refresh; wallet.Changed += CoinsChanged; upgrades.Changed += Refresh;
             settings.VisibilityChanged += SettingsChanged;
+            settings.ResetCompleted += ResetUi;
             Refresh();
         }
         private void OnDisable()
@@ -70,7 +71,7 @@ namespace CookieBreaker.Placement
             placement.Changed -= Refresh;
             if (wallet != null) wallet.Changed -= CoinsChanged;
             if (upgrades != null) upgrades.Changed -= Refresh;
-            if (settings != null) settings.VisibilityChanged -= SettingsChanged;
+            if (settings != null) { settings.VisibilityChanged -= SettingsChanged; settings.ResetCompleted -= ResetUi; }
             if (upgradePanel != null) upgradePanel.gameObject.SetActive(oldUpgradeActive);
             if (upgradeCanvas != null) upgradeCanvas.sortingOrder = oldSort;
             if (originalTitle != null) originalTitle.enabled = oldTitleEnabled;
@@ -83,6 +84,7 @@ namespace CookieBreaker.Placement
         private void Previous() { if (placement.Mode == FieldMode.Normal) { pageTwo = false; Refresh(); } }
         private void CoinsChanged(int coins) { Refresh(); }
         private void SettingsChanged(bool open) { popup = Popup.None; if (open) placement.EnterModal(); else placement.Cancel(); Refresh(); }
+        private void ResetUi() { popup = Popup.None; pageTwo = false; placement.Cancel(); }
 
         private void Refresh()
         {
@@ -104,7 +106,8 @@ namespace CookieBreaker.Placement
             if (originalTitle != null) originalTitle.enabled = oldTitleEnabled && mode == FieldMode.Normal;
             ui.header.text = placement.Message + (mode == FieldMode.Placement ? "\nRequired: " + Cost() + " coins" : "");
             ui.infoText.text = $"Turrets: {placement.Count}\nCoins: {wallet.Coins}\nCatapult damage: {placement.Damage}\nAttack period: {placement.FireInterval:0.00}s";
-            ui.saleText.text = "Sell Catapult for " + placement.SaleRefund + " coins?\n" +
+            ui.saleYes.interactable = placement.SaleRefund.HasValue;
+            ui.saleText.text = "Sell Catapult for " + (placement.SaleRefund.HasValue ? placement.SaleRefund.Value.ToString() : "LIMIT") + " coins?\n" +
                 (placement.Count == 1 ? "This is your last turret. Attacks will stop.\n" : "") + placement.Message;
             for (int i = 0; i < ui.rowLabels.Length; i++)
             {

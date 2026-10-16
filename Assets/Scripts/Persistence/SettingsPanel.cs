@@ -12,6 +12,7 @@ namespace CookieBreaker.Persistence
         [SerializeField] private Text status;
         public bool IsOpen => settingsWindow != null && settingsWindow.activeSelf;
         public event Action<bool> VisibilityChanged;
+        public event Action ResetCompleted;
 
         public void Configure(AutoSaveService service, GameObject settings, GameObject confirmation,
             Button openButton, Button closeButton, Button resetButton, Button cancelButton, Button confirmButton, Text statusLabel)
@@ -49,7 +50,11 @@ namespace CookieBreaker.Persistence
         private void Confirm()
         {
             confirm.interactable = false;
-            try { saves.ResetGame(); confirmationWindow.SetActive(false); }
+            try
+            {
+                if (saves.ResetGame()) { ResetCompleted?.Invoke(); Close(); }
+                else confirmationWindow.SetActive(false);
+            }
             finally { confirm.interactable = true; Refresh(); }
         }
         private void Refresh() { status.text = saves.Status; }

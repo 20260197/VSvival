@@ -24,18 +24,21 @@ namespace CookieBreaker.Placement
         public double BlockedX { get; }
         public double BlockedY { get; }
         public double BlockedRadius { get; }
-        public GridRules(int columns, int rows, double blockedX, double blockedY, double blockedRadius)
+        public double TurretClearance { get; }
+        public GridRules(int columns, int rows, double blockedX, double blockedY, double blockedRadius, double turretClearance = 0)
         {
             if (columns < 1 || columns > 16 || rows < 1 || rows > 16 ||
-                !Finite(blockedX) || !Finite(blockedY) || !Finite(blockedRadius) || blockedRadius < 0)
+                !Finite(blockedX) || !Finite(blockedY) || !Finite(blockedRadius) || blockedRadius < 0 || !Finite(turretClearance) || turretClearance < 0)
                 throw new ArgumentOutOfRangeException(nameof(columns), "Invalid grid settings.");
             Columns = columns; Rows = rows; BlockedX = blockedX; BlockedY = blockedY; BlockedRadius = blockedRadius;
+            TurretClearance = turretClearance;
         }
         public bool Allows(GridCell cell)
         {
             if (cell.X < 0 || cell.Y < 0 || cell.X >= Columns || cell.Y >= Rows) return false;
             double x = cell.X + 0.5 - BlockedX, y = cell.Y + 0.5 - BlockedY;
-            return BlockedRadius == 0 || x * x + y * y > BlockedRadius * BlockedRadius;
+            double limit = BlockedRadius + TurretClearance;
+            return BlockedRadius == 0 || x * x + y * y > limit * limit;
         }
         public bool TryCell(double worldX, double worldY, double originX, double originY, double size, out GridCell cell)
         {
@@ -94,6 +97,8 @@ namespace CookieBreaker.Placement
         private readonly Dictionary<GridCell, PlacedTurretData> records = new Dictionary<GridCell, PlacedTurretData>();
         public GridRules Grid { get; }
         public int Count => records.Count;
+        public int RelocatedCount { get; private set; }
+        public int CountOfType(string typeId) => records.Values.Count(x => x.typeId == typeId);
         public GridPlacementState(CoinBalance wallet, GridRules grid, TurretDefinition definition)
         {
             this.wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -108,8 +113,7 @@ namespace CookieBreaker.Placement
         {
             get
             {
-                double cost = Math.Ceiling(catapult.baseCost * Math.Pow(catapult.costGrowth, Math.Max(0, Count - 1)));
-                return double.IsInfinity(cost) || cost > int.MaxValue ? (int?)null : (int)cost;
+                return CostForCount(CountOfType(TurretCatalog.Catapult));
             }
         }
         public bool CanBuy => catapult.unlocked && NextCost.HasValue && wallet.Value >= NextCost.Value;
@@ -128,21 +132,36 @@ namespace CookieBreaker.Placement
             placed = data.Copy();
             return true;
         }
-        public int Refund(PlacedTurretData record) => (int)Math.Floor(record.paidCost * catapult.refundFraction);
-        public bool TrySell(string instanceId, out PlacedTurretData sold)
+        private int? CostForCount(int count)
+        {
+            double cost = Math.Ceiling(catapult.baseCost * Math.Pow(catapult.costGrowth, Math.Max(0, count - 1)));
+            return double.IsNaN(cost) || double.IsInfinity(cost) || cost < 1 || cost > int.MaxValue ? (int?)null : (int)cost;
+        }
+        public int? Refund(PlacedTurretData record)
+        {
+            if (record == null || record.typeId != TurretCatalog.Catapult || double.IsNaN(catapult.refundFraction) ||
+                catapult.refundFraction < 0 || catapult.refundFraction > 1) return null;
+            int? current = CostForCount(CountOfType(record.typeId));
+            return current.HasValue ? (int?)Math.Floor(current.Value * catapult.refundFraction) : null;
+        }
+        public bool TrySell(string instanceId, out PlacedTurretData sold, int? expectedRefund = null)
         {
             sold = records.Values.FirstOrDefault(x => x.instanceId == instanceId);
             if (sold == null) return false;
-            int refund = Refund(sold);
+            int? quote = Refund(sold);
+            if (!quote.HasValue || expectedRefund.HasValue && expectedRefund.Value != quote.Value) { sold = null; return false; }
+            int refund = quote.Value;
             if (refund > int.MaxValue - wallet.Value) { sold = null; return false; }
             records.Remove(new GridCell(sold.gridX, sold.gridY));
             if (refund > 0) wallet.Credit(refund);
             sold = sold.Copy();
             return true;
         }
-        public int Restore(PlacedTurretData[] saved)
+        public int Restore(PlacedTurretData[] saved, bool relocateBlocked = false)
         {
+            PlacedTurretData[] previous = Snapshot();
             records.Clear();
+            RelocatedCount = 0;
             if (saved == null)
             {
                 for (int y = 0; y < Grid.Rows; y++)
@@ -158,12 +177,41 @@ namespace CookieBreaker.Placement
             }
             int skipped = 0;
             var ids = new HashSet<string>();
+            var cells = new HashSet<GridCell>();
+            var blocked = new List<PlacedTurretData>();
             foreach (PlacedTurretData data in saved)
             {
                 if (data == null || data.typeId != TurretCatalog.Catapult || string.IsNullOrEmpty(data.instanceId) ||
-                    data.instanceId.Length > 64 || data.paidCost < 0 || !Grid.Allows(new GridCell(data.gridX, data.gridY)) ||
-                    records.ContainsKey(new GridCell(data.gridX, data.gridY)) || !ids.Add(data.instanceId)) { skipped++; continue; }
-                records.Add(new GridCell(data.gridX, data.gridY), data.Copy());
+                    data.instanceId.Length > 64 || data.paidCost < 0 || data.gridX < 0 || data.gridY < 0 ||
+                    data.gridX >= Grid.Columns || data.gridY >= Grid.Rows ||
+                    cells.Contains(new GridCell(data.gridX, data.gridY)) || ids.Contains(data.instanceId)) { skipped++; continue; }
+                GridCell cell = new GridCell(data.gridX, data.gridY);
+                if (!Grid.Allows(cell) && !relocateBlocked) { skipped++; continue; }
+                cells.Add(cell); ids.Add(data.instanceId);
+                if (Grid.Allows(cell)) records.Add(cell, data.Copy());
+                else blocked.Add(data.Copy());
+            }
+            // Reserve every still-valid saved cell before relocating, so one tower cannot
+            // steal another tower's valid position. Tie-break by row, then column.
+            foreach (PlacedTurretData data in blocked)
+            {
+                GridCell? best = null;
+                double bestDistance = double.PositiveInfinity;
+                for (int y = 0; y < Grid.Rows; y++) for (int x = 0; x < Grid.Columns; x++)
+                {
+                    var cell = new GridCell(x, y);
+                    double distance = (x - data.gridX) * (x - data.gridX) + (y - data.gridY) * (y - data.gridY);
+                    if (!Grid.Allows(cell) || records.ContainsKey(cell) || distance >= bestDistance) continue;
+                    best = cell; bestDistance = distance;
+                }
+                if (!best.HasValue)
+                {
+                    records.Clear(); foreach (PlacedTurretData old in previous) records.Add(new GridCell(old.gridX, old.gridY), old);
+                    RelocatedCount = 0;
+                    throw new InvalidOperationException("No free cell for the expanded cookie circle. Save must be preserved; enlarge the grid or reset explicitly.");
+                }
+                data.gridX = best.Value.X; data.gridY = best.Value.Y;
+                records.Add(best.Value, data); RelocatedCount++;
             }
             return skipped;
         }

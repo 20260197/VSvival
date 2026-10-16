@@ -32,7 +32,7 @@ namespace CookieBreaker.Editor
             if (existing.Length == 1 && oldRoot != null && existing[0].gameObject == oldRoot &&
                 oldRoot.GetComponentInChildren<PlacementHud>(true) != null &&
                 serializedSaves.FindProperty("placement").objectReferenceValue == existing[0])
-            { Selection.activeGameObject = oldRoot; Debug.Log("M4 already installed; selected without duplication or overwrite."); return; }
+            { Selection.activeGameObject = oldRoot; Debug.Log("M4 already installed; selected without overwrite. For M4.1 tuning use M4 > Apply M4.1 Placement and Cookie Defaults."); return; }
             if (existing.Length > 0 || oldRoot != null || serializedSaves.FindProperty("placement").objectReferenceValue != null)
                 throw new InvalidOperationException("Inspect existing/partial M4 objects and save reference. Nothing was overwritten.");
             CoinWallet wallet = One<CoinWallet>(roots);
@@ -111,12 +111,56 @@ namespace CookieBreaker.Editor
                 ui.saleNo = MakeButton("Cancel", ui.saleWindow.transform, font, new Vector2(0.06f, 0.12f), new Vector2(0.47f, 0.29f), 32);
                 ui.saleYes = MakeButton("Sell", ui.saleWindow.transform, font, new Vector2(0.53f, 0.12f), new Vector2(0.94f, 0.29f), 32);
                 safe.AddComponent<PlacementHud>().Configure(placement, wallet, upgrades, upgradePanel, settings, title, ui);
+                ApplyPolishDefaults(placement, One<CookieSpawner>(roots), scene);
                 Undo.RecordObject(saves, "Connect M4 layout saving"); saves.ConfigurePlacement(placement); EditorUtility.SetDirty(saves);
                 root.SetActive(true); Undo.RegisterCreatedObjectUndo(root, "Add M4 placement");
                 EditorSceneManager.MarkSceneDirty(scene); Selection.activeGameObject = root; Undo.CollapseUndoOperations(group);
                 Debug.Log("M4 added. Existing turret/UI remain intact in Edit Mode; Play replaces the fixed attack with grid-owned clones. Save/reopen the scene and test. No Player Settings or assets changed.");
             }
             catch { Undo.RevertAllDownToGroup(group); if (root != null) UnityEngine.Object.DestroyImmediate(root); throw; }
+        }
+
+        [MenuItem("Cookie Breaker/M4/Apply M4.1 Placement and Cookie Defaults")]
+        public static void ApplyPolishDefaults()
+        {
+            if (Application.unityVersion != "6000.5.1f1" || EditorApplication.isPlayingOrWillChangePlaymode)
+                throw new InvalidOperationException("Use Unity 6000.5.1f1 in Edit Mode.");
+            Scene scene = SceneManager.GetActiveScene();
+            if (scene.path != CookieBreakerProjectSetup.MainScenePath) throw new InvalidOperationException("Open CookieBreakerMain first.");
+            GameObject[] roots = scene.GetRootGameObjects();
+            TurretPlacementController placement = One<TurretPlacementController>(roots);
+            CookieSpawner spawner = One<CookieSpawner>(roots);
+            Undo.IncrementCurrentGroup(); int group = Undo.GetCurrentGroup(); Undo.SetCurrentGroupName("Apply M4.1 circle and production tuning");
+            try
+            {
+                ApplyPolishDefaults(placement, spawner, scene);
+                EditorSceneManager.MarkSceneDirty(scene); Selection.activeGameObject = placement.gameObject;
+                Undo.CollapseUndoOperations(group);
+                Debug.Log("M4.1 applied: spawn interval 0.25s, max cookies 24, spacing 0.40, attempts 24, cookie scale 0.36/collider radius 0.5, circle radius 2 cells, turret clearance 0.75 cells. No objects replaced or scene saved. Save and reopen, then test Play. Undo restores prior tuning.");
+            }
+            catch { Undo.RevertAllDownToGroup(group); throw; }
+        }
+        private static void ApplyPolishDefaults(TurretPlacementController placement, CookieSpawner spawner, Scene scene)
+        {
+            var spawnData = new SerializedObject(spawner);
+            CookieHealth template = spawnData.FindProperty("cookieTemplate").objectReferenceValue as CookieHealth;
+            if (template == null || template.gameObject.scene != scene || template.gameObject.activeSelf)
+                throw new InvalidOperationException("Keep the existing inactive cookie scene template. Asset/prefab files were not modified.");
+            CircleCollider2D collider = template.GetComponent<CircleCollider2D>();
+            if (collider == null) throw new InvalidOperationException("The cookie template needs its CircleCollider2D.");
+            Undo.RecordObject(spawner, "Tune cookie production");
+            spawnData.FindProperty("spawnInterval").floatValue = 0.25f;
+            spawnData.FindProperty("maximumCookies").intValue = 24;
+            spawnData.FindProperty("minimumSpacing").floatValue = 0.40f;
+            spawnData.FindProperty("spawnAttempts").intValue = 24;
+            spawnData.ApplyModifiedPropertiesWithoutUndo();
+            Undo.RecordObject(template.transform, "Resize cookie"); template.transform.localScale = Vector3.one * 0.36f;
+            Undo.RecordObject(collider, "Align cookie collision radius"); collider.radius = 0.5f; collider.offset = Vector2.zero;
+            Undo.RecordObject(placement, "Expand shared cookie circle");
+            var placementData = new SerializedObject(placement);
+            placementData.FindProperty("blockedRadiusCells").floatValue = 2.0f;
+            placementData.FindProperty("turretClearanceCells").floatValue = 0.75f;
+            placementData.ApplyModifiedPropertiesWithoutUndo();
         }
         private static T One<T>(GameObject[] roots) where T : Behaviour
         {
