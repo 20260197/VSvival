@@ -9,6 +9,7 @@ namespace CookieBreaker.Combat
         [SerializeField] private Shape shape;
         private Sprite sprite;
         private Texture2D texture;
+        public Shape ConfiguredShape => shape;
         public void Configure(Shape value) { shape = value; }
 
         private void Awake()
@@ -25,7 +26,7 @@ namespace CookieBreaker.Combat
                 float px = (x + 0.5f) / size - 0.5f;
                 float py = (y + 0.5f) / size - 0.5f;
                 Color color = Color.white;
-                if (shape != Shape.Square && px * px + py * py > 0.24f) color = Color.clear;
+                if (shape != Shape.Square && px * px + py * py > 0.25f) color = Color.clear;
                 else if (shape == Shape.Cookie)
                 {
                     color = new Color(0.91f, 0.64f, 0.32f, 1);

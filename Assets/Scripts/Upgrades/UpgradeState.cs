@@ -72,7 +72,7 @@ namespace CookieBreaker.Upgrades
         }
 
         // Restore counts directly, never replay purchases or add effects to current values.
-        public void RestoreLevels(int damage, int attackSpeed, int production)
+        public void RestoreLevels(int damage, int attackSpeed, int production, bool allowCappedProductionLevels = false)
         {
             int[] restored = { damage, attackSpeed, production };
             for (int index = 0; index < restored.Length; index++)
@@ -82,7 +82,7 @@ namespace CookieBreaker.Upgrades
                     throw new ArgumentOutOfRangeException(nameof(restored), "Unreachable upgrade level.");
                 if (index == 0 && (long)baseDamage + level > int.MaxValue ||
                     index == 1 && level > 0 && Interval(baseFireInterval, minimumFireInterval, 1.10, level - 1) <= minimumFireInterval ||
-                    index == 2 && level > 0 && Interval(baseSpawnInterval, minimumSpawnInterval, 1.15, level - 1) <= minimumSpawnInterval)
+                    index == 2 && !allowCappedProductionLevels && level > 0 && Interval(baseSpawnInterval, minimumSpawnInterval, 1.15, level - 1) <= minimumSpawnInterval)
                     throw new ArgumentOutOfRangeException(nameof(restored), "Upgrade level exceeds its gameplay cap.");
             }
             Array.Copy(restored, levels, levels.Length);

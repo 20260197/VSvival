@@ -19,6 +19,10 @@ namespace CookieBreaker.Combat
         private readonly List<CookieProjectile> projectiles = new List<CookieProjectile>();
         private float remaining;
         private bool placedOnGrid;
+        [SerializeField] private CookieHealth currentTarget;
+        public CookieHealth CurrentTarget => currentTarget;
+        public CookieSpawner Spawner => spawner;
+        private void OnDisable() { currentTarget = null; }
         public void PlaceAt(Vector3 position) { placedOnGrid = true; transform.position = position; }
         public int Damage { get => damage; set => damage = Mathf.Max(1, value); }
         public float FireInterval
@@ -68,7 +72,8 @@ namespace CookieBreaker.Combat
             if (!placedOnGrid) transform.position = CookieSpawner.ViewportPosition(worldCamera, viewportPosition);
             projectiles.RemoveAll(projectile => projectile == null || !projectile.isActiveAndEnabled);
             remaining = Mathf.Max(0, remaining - Time.deltaTime);
-            CookieHealth target = spawner.FindNearest(transform.position, Mathf.Max(0.1f, attackRange));
+            currentTarget = spawner.FindNearest(transform.position, Mathf.Max(0.1f, attackRange));
+            CookieHealth target = currentTarget;
             if (target == null) return;
             Vector2 direction = target.transform.position - transform.position;
             barrelPivot.rotation = Quaternion.Euler(0, 0, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90);

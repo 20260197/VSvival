@@ -1,4 +1,4 @@
-"""Compile Unity references; run M1-M4 combat, upgrades, file/state and placement checks.
+"""Compile Unity references; run M1-M4.1 combat, file/state, placement and polish checks.
 
 This never launches Unity and does not test rendering, physics, scenes or APKs.
 """
@@ -73,6 +73,9 @@ def main():
                                  "Assets/Scripts/Placement/GridPlacementState.cs", "Tests/SaveStateChecks.cs"]),
             ("GridPlacementChecks", ["Assets/Scripts/Combat/CombatState.cs", "Assets/Scripts/Placement/GridPlacementState.cs",
                                      "Assets/Scripts/Persistence/SaveData.cs", "Tests/GridPlacementChecks.cs"]),
+            ("PlacementPolishChecks", ["Assets/Scripts/Combat/CombatState.cs", "Assets/Scripts/Combat/CircleSpawnRules.cs",
+                                       "Assets/Scripts/Placement/GridPlacementState.cs", "Assets/Scripts/Placement/PlacementGesture.cs",
+                                       "Assets/Scripts/Upgrades/UpgradeState.cs", "Tests/PlacementPolishChecks.cs"]),
         ):
             checks = compile_sources(name, net_refs, [project / path for path in sources], True)
             checks.with_suffix(".runtimeconfig.json").write_text(json.dumps({"runtimeOptions": {

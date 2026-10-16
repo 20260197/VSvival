@@ -44,13 +44,13 @@ internal static class GridPlacementChecks
             Record("negative", 2, 0, paid: -1), Record(new string('a', 65), 2, 0), null };
         Check(state.Restore(invalidRecords) == 8 && state.Count == 1, "Malformed records were not isolated/skipped");
         Check(!state.TrySell("wrong-id", out _) && state.Count == 1 && wallet.Value == 75, "Wrong sale target removed a different turret");
-        Check(state.TrySell("valid", out _) && wallet.Value == 87 && state.Count == 0, "Paid-price refund did not floor 25 * 0.5 to 12");
+        Check(state.TrySell("valid", out _) && wallet.Value == 87 && state.Count == 0, "Current-count refund did not floor 25 * 0.5 to 12");
         Check(!state.TrySell("valid", out _) && wallet.Value == 87, "Repeated sale paid twice");
         state.Restore(Array.Empty<PlacedTurretData>());
         Check(state.Count == 0, "Saved empty layout silently recreated the starter");
         state.Restore(null);
         string starterId = state.Snapshot()[0].instanceId;
-        Check(state.TrySell(starterId, out _) && wallet.Value == 87, "Free starter generated resale money");
+        Check(state.TrySell(starterId, out _) && wallet.Value == 99, "Starter must use the same current-count refund as other catapults");
         state.Restore(new[] { Record("paid", 0, 0, paid: 100) });
         wallet.Restore(int.MaxValue);
         Check(!state.TrySell("paid", out _) && state.Count == 1 && wallet.Value == int.MaxValue, "Sale overflow removed occupancy or coins");
