@@ -14,6 +14,7 @@ namespace CookieBreaker.Upgrades
         private UpgradeState state;
         private bool purchasing;
         public event Action Changed;
+        public event Action Purchased;
         internal UpgradeState State => state;
 
         public void Configure(CoinWallet coinWallet, AutomaticTurret automaticTurret, CookieSpawner cookieSpawner)
@@ -46,14 +47,36 @@ namespace CookieBreaker.Upgrades
             try
             {
                 if (!state.TryPurchase(kind)) return false;
-                turret.Damage = state.Damage;
-                turret.FireInterval = (float)state.FireInterval;
-                spawner.SpawnInterval = (float)state.SpawnInterval;
-                wallet.NotifyBalanceChanged();
-                Changed?.Invoke();
+                ApplyEffectsAndNotify();
+                Purchased?.Invoke();
                 return true;
             }
             finally { purchasing = false; }
+        }
+
+        public void RestoreProgress(int coins, int damageLevel, int speedLevel, int productionLevel)
+        {
+            if (purchasing || !EnsureReady()) throw new InvalidOperationException("Cannot restore upgrades during a purchase or without M1 references.");
+            if (coins < 0) throw new ArgumentOutOfRangeException(nameof(coins));
+            // Validate every level before changing any state, including the shared wallet.
+            state.RestoreLevels(damageLevel, speedLevel, productionLevel);
+            wallet.Balance.Restore(coins);
+            ApplyEffectsAndNotify();
+        }
+
+        public void ClearTransientCombat()
+        {
+            turret.ClearActiveProjectiles();
+            spawner.ClearActiveCookies();
+        }
+
+        private void ApplyEffectsAndNotify()
+        {
+            turret.Damage = state.Damage;
+            turret.FireInterval = (float)state.FireInterval;
+            spawner.SpawnInterval = (float)state.SpawnInterval;
+            wallet.NotifyBalanceChanged();
+            Changed?.Invoke();
         }
     }
 }

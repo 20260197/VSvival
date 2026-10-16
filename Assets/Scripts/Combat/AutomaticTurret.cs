@@ -41,6 +41,18 @@ namespace CookieBreaker.Combat
             projectileContainer = container;
         }
 
+        public void ClearActiveProjectiles()
+        {
+            foreach (CookieProjectile projectile in projectiles)
+            {
+                if (projectile == null) continue;
+                projectile.gameObject.SetActive(false);
+                Destroy(projectile.gameObject);
+            }
+            projectiles.Clear();
+            remaining = 0;
+        }
+
         private void Start()
         {
             if (worldCamera != null && spawner != null && barrelPivot != null && muzzle != null &&

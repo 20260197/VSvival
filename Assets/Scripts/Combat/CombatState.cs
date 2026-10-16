@@ -45,5 +45,11 @@ namespace CookieBreaker.Combat
             Value -= amount;
             return true;
         }
+
+        public void Restore(int coins)
+        {
+            if (coins < 0) throw new ArgumentOutOfRangeException(nameof(coins));
+            Value = coins;
+        }
     }
 }
